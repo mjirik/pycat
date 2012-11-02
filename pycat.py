@@ -216,7 +216,7 @@ if __name__ == "__main__":
 
 
     mdl = Model()
-    mdl.train(voxels1, voxel2)
+    mdl.train(voxels1, voxels2)
     
     
 
