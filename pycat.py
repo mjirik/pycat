@@ -1,8 +1,23 @@
+# -*- coding: utf-8 -*-
+
+import unittest
+import sys
+import pdb
+#  pdb.set_trace();
+
+
+import logging
+logger = logging.getLogger(__name__)
+
+import argparse
+
+import scipy.io
 import matplotlib.pyplot as plt
 import numpy as np
 from pygco import cut_simple, cut_from_graph
+sys.path.append("./extern/py3DSeedEditor/")
+import py3DSeedEditor
 
-import pdb
 
 def generate_data(shp=[16,16,16]):
     """ Generating data """
@@ -171,13 +186,13 @@ if __name__ == "__main__":
         # zde by byl prostor pro ruční (interaktivní) zvolení prahu z klávesnice 
         #tě ebo jinak
 
-    pyed = py3DSeedEditor(data)
+    pyed = py3DSeedEditor.py3DSeedEditor(data)
     output = pyed.show()
 
     scipy.io.savemat(args.outputfile,{'data':output})
     pyed.get_seed_val(1)
 
 
-example_3d()
+#example_3d()
 
 #example_binary()
