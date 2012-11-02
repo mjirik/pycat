@@ -15,12 +15,31 @@ import scipy.io
 import matplotlib.pyplot as plt
 import numpy as np
 from pygco import cut_simple, cut_from_graph
+import sklearn
+
+
+
 sys.path.append("./extern/py3DSeedEditor/")
 import py3DSeedEditor
 
 
+class Model:
+    """ Model """
+    def __init__ (self):
+        pass
+
+    def train(self, cla, clb):
+        mdl1 = sklearn.mixture.GMM(covariance_type='full')
+        pdb.set_trace();
+        mdl1.fit(cla)
+
+    def likelihood(self, cl):
+        pass
+
+
+
 def generate_data(shp=[16,16,16]):
-    """ Generating data """
+    """ Generating random data with cubic object inside"""
 
     x = np.ones(shp)
 # inserting box
@@ -191,6 +210,16 @@ if __name__ == "__main__":
 
     scipy.io.savemat(args.outputfile,{'data':output})
     pyed.get_seed_val(1)
+
+    voxels1 = pyed.get_seed_val(1)
+    voxels2 = pyed.get_seed_val(2)
+
+
+    mdl = Model()
+    mdl.train(voxels1, voxel2)
+    
+    
+
 
 
 #example_3d()
