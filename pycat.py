@@ -4,6 +4,15 @@ from pygco import cut_simple, cut_from_graph
 
 import pdb
 
+def generate_data(shp=[16,16,16]):
+    """ Generating data """
+
+    x = np.ones(shp)
+# inserting box
+    x[4:-4, 6:-2, 1:-6] = -1
+    x_noisy = x + np.random.normal(0, 0.6, size=x.shape)
+    return x_noisy
+
 def example_3d():
 
     x = np.ones((10, 10, 10))
@@ -92,6 +101,81 @@ def example_binary():
 
     plt.show()
                                                                                                         
+
+# --------------------------main------------------------------
+if __name__ == "__main__":
+    logger = logging.getLogger()
+    logger.setLevel(logging.WARNING)
+# při vývoji si necháme vypisovat všechny hlášky
+    #logger.setLevel(logging.DEBUG)
+
+    ch = logging.StreamHandler()
+#   output configureation
+    #logging.basicConfig(format='%(asctime)s %(message)s')
+    logging.basicConfig(format='%(message)s')
+
+    formatter = logging.Formatter("%(levelname)-5s [%(module)s:%(funcName)s:%(lineno)d] %(message)s")
+    # add formatter to ch
+    ch.setFormatter(formatter)
+
+    logger.addHandler(ch)
+
+
+    # input parser
+    parser = argparse.ArgumentParser(description='Segment vessels from liver')
+    parser.add_argument('-f','--filename',  
+            #default = '../jatra/main/step.mat',
+            default = 'lena',
+            help='*.mat file with variables "data", "segmentation" and "threshod"')
+    parser.add_argument('-d', '--debug', action='store_true',
+            help='run in debug mode')
+    parser.add_argument('-e3', '--example3d', action='store_true',
+            help='run with 3D example data')
+    parser.add_argument('-t', '--tests', action='store_true', 
+            help='run unittest')
+    parser.add_argument('-o', '--outputfile', type=str,
+        default='output.mat',help='output file name')
+    args = parser.parse_args()
+
+
+    if args.debug:
+        logger.setLevel(logging.DEBUG)
+
+    if args.tests:
+        # hack for use argparse and unittest in one module
+        sys.argv[1:]=[]
+        unittest.main()
+
+    if args.example3d:
+        data = generate_data()
+    elif args.filename == 'lena':
+        from scipy import misc
+        data = misc.lena()
+    else:
+    #   load all 
+        mat = scipy.io.loadmat(args.filename)
+        logger.debug( mat.keys())
+
+        # load specific variable
+        dataraw = scipy.io.loadmat(args.filename, variable_names=['data'])
+        data = dataraw['data']
+
+        #logger.debug(matthreshold['threshold'][0][0])
+
+
+        # zastavení chodu programu pro potřeby debugu, 
+        # ovládá se klávesou's','c',... 
+        # zakomentovat
+        #pdb.set_trace();
+
+        # zde by byl prostor pro ruční (interaktivní) zvolení prahu z klávesnice 
+        #tě ebo jinak
+
+    pyed = py3DSeedEditor(data)
+    output = pyed.show()
+
+    scipy.io.savemat(args.outputfile,{'data':output})
+    pyed.get_seed_val(1)
 
 
 example_3d()
