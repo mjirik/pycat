@@ -10,6 +10,11 @@ Requirements
 gco_python
 
 
+Install
+-------
+
+git clone --recursive git@github.com:mjirik/pycat.git
+
 gco_python install notes
 ------------------------
 
