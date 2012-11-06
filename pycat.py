@@ -16,7 +16,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pygco import cut_simple, cut_from_graph
 import sklearn
-
+from sklearn import mixture
 
 
 sys.path.append("./extern/py3DSeedEditor/")
@@ -29,8 +29,12 @@ class Model:
         pass
 
     def train(self, cla, clb):
-        mdl1 = sklearn.mixture.GMM(covariance_type='full')
+        #mdl1 = sklearn.mixture.GMM(covariance_type='full')
+        mdl1 = sklearn.mixture.GMM(cvtype='full')
         pdb.set_trace();
+	if len(cla.shape) == 1:
+            # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
+            cla = cla.shape(-1,1)
         mdl1.fit(cla)
 
     def likelihood(self, cl):
@@ -159,7 +163,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Segment vessels from liver')
     parser.add_argument('-f','--filename',  
             #default = '../jatra/main/step.mat',
-            default = 'lena',
+            default = '3d',
             help='*.mat file with variables "data", "segmentation" and "threshod"')
     parser.add_argument('-d', '--debug', action='store_true',
             help='run in debug mode')
@@ -185,6 +189,9 @@ if __name__ == "__main__":
     elif args.filename == 'lena':
         from scipy import misc
         data = misc.lena()
+    elif args.filename == '3d':
+        from scipy import misc
+        data = generate_data()
     else:
     #   load all 
         mat = scipy.io.loadmat(args.filename)

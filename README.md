@@ -7,6 +7,7 @@ Python interactive 3D graphcut
 Requirements
 ------------
 
+sudo apt-get install python-sklearn
 gco_python
 
 
