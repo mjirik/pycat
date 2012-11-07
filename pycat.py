@@ -24,23 +24,85 @@ import py3DSeedEditor
 
 
 class Model:
-    """ Model """
-    def __init__ (self):
+    """ Model for image intensity. Last dimension represent feature vector. 
+    m = Model()
+    m.train(cla, clb)
+    X = numpy.random.random([2,3,4])
+    # we have data 2x3 with fature vector with 4 fatures
+    m.likelihood(X,0)
+    """
+    def __init__ (self, nObjects=2):
+        self.mdl =  {}
         pass
 
-    def train(self, cla, clb):
+    def train(self, clx, cl):
+        """ Train clas number cl with data clx """
         #mdl1 = sklearn.mixture.GMM(covariance_type='full')
-        mdl1 = sklearn.mixture.GMM(cvtype='full')
-        pdb.set_trace();
-	if len(cla.shape) == 1:
+        self.mdl[cl] = sklearn.mixture.GMM(cvtype='full')
+	if len(clx.shape) == 1:
             # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
-            cla = cla.shape(-1,1)
-        mdl1.fit(cla)
+            clx = clx.reshape(-1,1)
+        self.mdl[cl].fit(clx)
+        #pdb.set_trace();
 
-    def likelihood(self, cl):
-        pass
+    def likelihood(self, x, cl, onedimfv = True):
+        """
+        X = numpy.random.random([2,3,4])
+        # we have data 2x3 with fature vector with 4 fatures
+        m.likelihood(X,0)
+        """
+
+        sha = x.shape
+        if onedimfv:
+            xr = x.reshape(-1, 1)
+        else:
+            xr = x.reshape(-1, sha[-1])
+
+        pdb.set_trace();
+        px = self.mdl[cl].score(xr)
+
+#todo ošetřit více dimenzionální fv
+        px = px.reshape(sha)
+        return px
+
+         
 
 
+class ImageGraphCut:
+    def __init__(self):
+        self.tdata = {}
+
+    def set_data(self, data, voxels1, voxels2):
+        mdl = Model ()
+        mdl.train(voxels1, 0)
+        mdl.train(voxels2, 1)
+        #pdb.set_trace();
+        #tdata = {}
+        tdata0 = mdl.likelihood(data, 0)
+        tdata1 = mdl.likelihood(data, 1)
+
+# as we convert to int, we need to multipy to get sensible values
+
+        unariesalt = (10 * np.dstack([tdata0.reshape(-1,1), tdata1.reshape(-1,1)]).copy("C")).astype(np.int32)
+
+# create potts pairwise
+        pairwise = -10 * np.eye(2, dtype=np.int32)
+# use the gerneral graph algorithm
+# first, we construct the grid graph
+        inds = np.arange(data.size).reshape(data.shape)
+        edgx = np.c_[inds[:, :, :-1].ravel(), inds[:, :, 1:].ravel()]
+        edgy = np.c_[inds[:, :-1, :].ravel(), inds[:, 1:, :].ravel()]
+        edgz = np.c_[inds[:-1, :, :].ravel(), inds[1:, :, :].ravel()]
+        edges = np.vstack([edgx, edgy, edgz]).astype(np.int32)
+
+# we flatten the unaries
+        #result_graph = cut_from_graph(edges, unaries.reshape(-1, 2), pairwise)
+        result_graph = cut_from_graph(edges, unariesalt.reshape(-1,2), pairwise)
+
+        
+        result_labeling = result_graph.reshape(data.shape)
+
+        return result_labeling
 
 def generate_data(shp=[16,16,16]):
     """ Generating random data with cubic object inside"""
@@ -218,14 +280,27 @@ if __name__ == "__main__":
     scipy.io.savemat(args.outputfile,{'data':output})
     pyed.get_seed_val(1)
 
+    voxels0 = pyed.get_seed_val(0)
     voxels1 = pyed.get_seed_val(1)
-    voxels2 = pyed.get_seed_val(2)
 
+    pdb.set_trace();
+    logger.debug(len(voxels0))
+    logger.debug(len(voxels1))
 
-    mdl = Model()
-    mdl.train(voxels1, voxels2)
-    
-    
+    igc = ImageGraphCut()
+    res_segm = igc.set_data(data, voxels0, voxels1)
+
+    pyed = py3DSeedEditor.py3DSeedEditor(res_segm)
+    output = pyed.show()
+    # model test
+#    mdl = Model()
+#    mdl.train(voxels1, voxels2)
+#    #pdb.set_trace();
+#    ndata = mdl.likelihood(data, 0)
+#    pyed = py3DSeedEditor.py3DSeedEditor(ndata)
+#    output = pyed.show()
+#    
+#    
 
 
 
