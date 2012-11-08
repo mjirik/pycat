@@ -72,18 +72,28 @@ class ImageGraphCut:
     def __init__(self):
         self.tdata = {}
 
+
+    def set_hard_seeds(self, tdata1, tdata2, seeds):
+        tdata1[seeds==1] = np.max(tdata1) + 1
+        tdata2[seeds==2] = np.max(tdata2) + 1
+        tdata1[seeds==2] = 0
+        tdata2[seeds==1] = 0
+
+
+        
+
     def set_data(self, data, voxels1, voxels2):
         mdl = Model ()
-        mdl.train(voxels1, 0)
-        mdl.train(voxels2, 1)
+        mdl.train(voxels1, 1)
+        mdl.train(voxels2, 2)
         #pdb.set_trace();
         #tdata = {}
-        tdata0 = mdl.likelihood(data, 0)
         tdata1 = mdl.likelihood(data, 1)
+        tdata2 = mdl.likelihood(data, 2)
 
 # as we convert to int, we need to multipy to get sensible values
 
-        unariesalt = (10 * np.dstack([tdata0.reshape(-1,1), tdata1.reshape(-1,1)]).copy("C")).astype(np.int32)
+        unariesalt = (10 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
 
 # create potts pairwise
         pairwise = -10 * np.eye(2, dtype=np.int32)
@@ -280,15 +290,15 @@ if __name__ == "__main__":
     scipy.io.savemat(args.outputfile,{'data':output})
     pyed.get_seed_val(1)
 
-    voxels0 = pyed.get_seed_val(0)
-    voxels1 = pyed.get_seed_val(1)
+    voxels1 = pyed.get_seed_val(0)
+    voxels2 = pyed.get_seed_val(1)
 
-    pdb.set_trace();
-    logger.debug(len(voxels0))
+    #pdb.set_trace();
     logger.debug(len(voxels1))
+    logger.debug(len(voxels2))
 
     igc = ImageGraphCut()
-    res_segm = igc.set_data(data, voxels0, voxels1)
+    res_segm = igc.set_data(data, voxels1, voxels2)
 
     pyed = py3DSeedEditor.py3DSeedEditor(res_segm)
     output = pyed.show()
