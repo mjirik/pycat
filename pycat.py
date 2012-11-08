@@ -18,6 +18,7 @@ from pygco import cut_simple, cut_from_graph
 import sklearn
 from sklearn import mixture
 
+import scipy.ndimage
 
 sys.path.append("./extern/py3DSeedEditor/")
 import py3DSeedEditor
@@ -68,9 +69,46 @@ class Model:
 
 
 class ImageGraphCut:
-    def __init__(self):
+    def __init__(self, img, zoom = 0.5):
+        self.img = img
         self.tdata = {}
+        self.segmentation = []
+        self.imgshape = img.shape
+        self.zoom = zoom
 
+        self.img_input_resize()
+
+    def img_input_resize(self):
+        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False)
+
+    def img_output_resize(self):
+        self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+
+    def interactivity(self):
+
+        pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+        pyed.show()
+
+        #scipy.io.savemat(args.outputfile,{'data':output})
+        #pyed.get_seed_val(1)
+
+        self.voxels1 = pyed.get_seed_val(0)
+        self.voxels2 = pyed.get_seed_val(1)
+        self.seeds = pyed.seeds
+
+    def make_gc(self):
+        #pdb.set_trace();
+
+        
+        res_segm = self.set_data(self.img, self.voxels1, self.voxels2, seeds = self.seeds)
+
+        self.segmentation = res_segm
+        self.img_output_resize()
+
+    def show_segmentation(self):
+
+        pyed = py3DSeedEditor.py3DSeedEditor(self.segmentation)
+        pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
         tdata1[seeds==2] = np.max(tdata1) + 1
@@ -298,25 +336,40 @@ if __name__ == "__main__":
         # zde by byl prostor pro ruční (interaktivní) zvolení prahu z klávesnice 
         #tě ebo jinak
 
-    pyed = py3DSeedEditor.py3DSeedEditor(data)
-    output = pyed.show()
+    igc = ImageGraphCut(data)
+    igc.interactivity()
+    igc.make_gc()
+    igc.show_segmentation()
+    logger.debug(igc.segmentation.shape)
 
-    scipy.io.savemat(args.outputfile,{'data':output})
-    pyed.get_seed_val(1)
+   # pyed = py3DSeedEditor.py3DSeedEditor(data)
+   # output = pyed.show()
 
-    voxels1 = pyed.get_seed_val(0)
-    voxels2 = pyed.get_seed_val(1)
+   # #scipy.io.savemat(args.outputfile,{'data':output})
+   # #pyed.get_seed_val(1)
 
-    #pdb.set_trace();
-    logger.debug(len(voxels1))
-    logger.debug(len(voxels2))
+   # voxels1 = pyed.get_seed_val(0)
+   # voxels2 = pyed.get_seed_val(1)
 
-    igc = ImageGraphCut()
-    res_segm = igc.set_data(data, voxels1, voxels2, seeds = pyed.seeds)
+   # #pdb.set_trace();
+   # logger.debug(len(voxels1))
+   # logger.debug(len(voxels2))
 
-    pyed = py3DSeedEditor.py3DSeedEditor(res_segm)
-    output = pyed.show()
+   # igc = ImageGraphCut(data)
+   # 
+   # res_segm = igc.set_data(data, voxels1, voxels2, seeds = pyed.seeds)
+
+   # pyed = py3DSeedEditor.py3DSeedEditor(res_segm)
+   # output = pyed.show()
+   # 
+   # 
+    
+    
+    
+    
+    
     # model test
+
 #    mdl = Model()
 #    mdl.train(voxels1, voxels2)
 #    #pdb.set_trace();
