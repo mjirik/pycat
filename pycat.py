@@ -58,7 +58,6 @@ class Model:
         else:
             xr = x.reshape(-1, sha[-1])
 
-        pdb.set_trace();
         px = self.mdl[cl].score(xr)
 
 #todo ošetřit více dimenzionální fv
@@ -73,27 +72,42 @@ class ImageGraphCut:
         self.tdata = {}
 
 
-    def set_hard_seeds(self, tdata1, tdata2, seeds):
-        tdata1[seeds==1] = np.max(tdata1) + 1
-        tdata2[seeds==2] = np.max(tdata2) + 1
-        tdata1[seeds==2] = 0
-        tdata2[seeds==1] = 0
+    def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
+        tdata1[seeds==2] = np.max(tdata1) + 1
+        tdata2[seeds==1] = np.max(tdata2) + 1
+        tdata1[seeds==1] = 0
+        tdata2[seeds==2] = 0
+
+        return tdata1, tdata2
+
 
 
         
 
-    def set_data(self, data, voxels1, voxels2):
+    def set_data(self, data, voxels1, voxels2, seeds = False, hard_constraints = True):
+        """
+        Setting of data.
+        You need set seeds if you want use hard_constraints.
+        """
         mdl = Model ()
         mdl.train(voxels1, 1)
         mdl.train(voxels2, 2)
         #pdb.set_trace();
         #tdata = {}
-        tdata1 = mdl.likelihood(data, 1)
-        tdata2 = mdl.likelihood(data, 2)
-
 # as we convert to int, we need to multipy to get sensible values
+        tdata1 = (mdl.likelihood(data, 1)+10) * 10
+        tdata2 = (mdl.likelihood(data, 2)+10) * 10
 
-        unariesalt = (10 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
+        if hard_constraints: 
+            #pdb.set_trace();
+            if (type(seeds)=='bool'):
+                raise Excaption ('Seeds variable  not set','There is need set seed if you want use hard constraints')
+            tdata1, tdata2 = self.set_hard_hard_constraints(tdata1, tdata2, seeds)
+            
+
+
+
+        unariesalt = (1 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
 
 # create potts pairwise
         pairwise = -10 * np.eye(2, dtype=np.int32)
@@ -298,7 +312,7 @@ if __name__ == "__main__":
     logger.debug(len(voxels2))
 
     igc = ImageGraphCut()
-    res_segm = igc.set_data(data, voxels1, voxels2)
+    res_segm = igc.set_data(data, voxels1, voxels2, seeds = pyed.seeds)
 
     pyed = py3DSeedEditor.py3DSeedEditor(res_segm)
     output = pyed.show()
