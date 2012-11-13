@@ -79,7 +79,7 @@ class ImageGraphCut:
         self.img_input_resize()
 
     def img_input_resize(self):
-        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, method = 'nearest')
+        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
 
     def img_output_resize(self):
         self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
