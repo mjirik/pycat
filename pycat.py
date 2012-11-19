@@ -302,6 +302,8 @@ class Tests(unittest.TestCase):
         #igc.interactivity()
 # instead of interacitivity just set seeeds
         igc.seeds = seeds
+        igc.voxels1 = data[seeds==1]
+        igc.voxels2 = data[seeds==2]
 # TODO 
         igc.make_gc()
 # instead of showing just test results
