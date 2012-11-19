@@ -32,18 +32,25 @@ class Model:
     # we have data 2x3 with fature vector with 4 fatures
     m.likelihood(X,0)
     """
-    def __init__ (self, nObjects=2):
+    def __init__ (self, nObjects=2,  modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}):
         self.mdl =  {}
+        self.modelparams = modelparams
         pass
 
-    def train(self, clx, cl):
+    def train(self, clx, cl ):
         """ Train clas number cl with data clx """
-        #mdl1 = sklearn.mixture.GMM(covariance_type='full')
-        self.mdl[cl] = sklearn.mixture.GMM(cvtype='full')
-	if len(clx.shape) == 1:
-            # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
-            clx = clx.reshape(-1,1)
-        self.mdl[cl].fit(clx)
+
+        if self.modelparams['type'] == 'gmmsame':
+            gmmparams = self.modelparams['params']
+            #mdl1 = sklearn.mixture.GMM(covariance_type='full')
+            self.mdl[cl] = sklearn.mixture.GMM(**gmmparams)
+            if len(clx.shape) == 1:
+                # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
+                clx = clx.reshape(-1,1)
+            self.mdl[cl].fit(clx)
+        else:
+            raise NameError("Unknown model type")
+
         #pdb.set_trace();
 
     def likelihood(self, x, cl, onedimfv = True):
@@ -69,12 +76,27 @@ class Model:
 
 
 class ImageGraphCut:
-    def __init__(self, img, zoom = 1):
+    """
+    Interactive Graph Cut
+
+    ImageGraphCut(data, zoom, modelparams)
+    scale
+
+    Example:
+
+    igc = ImageGraphCut(data)
+    igc.interactivity()
+    igc.make_gc()
+    igc.show_segmentation()
+    logger.debug(igc.segmentation.shape)
+    """
+    def __init__(self, img, zoom = 1, modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}):
         self.img = img
         self.tdata = {}
         self.segmentation = []
         self.imgshape = img.shape
         self.zoom = zoom
+        self.modelparams = modelparams
 
         self.img_input_resize()
 
@@ -127,7 +149,7 @@ class ImageGraphCut:
         Setting of data.
         You need set seeds if you want use hard_constraints.
         """
-        mdl = Model ()
+        mdl = Model ( modelparams = self.modelparams )
         mdl.train(voxels1, 1)
         mdl.train(voxels2, 2)
         #pdb.set_trace();
@@ -263,6 +285,35 @@ def example_binary():
 
     plt.show()
                                                                                                         
+class Tests(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_segmentation(self):
+        data_shp = [16,16,16]
+        data = generate_data(data_shp)
+        seeds = np.zeros(data_shp)
+# setting background seeds
+        seeds[:,0,0] = 1
+        seeds[6,8:-5,2] = 2
+    #x[4:-4, 6:-2, 1:-6] = -1
+
+        igc = ImageGraphCut(data)
+        #igc.interactivity()
+# instead of interacitivity just set seeeds
+        igc.seeds = seeds
+# TODO 
+        igc.make_gc()
+# instead of showing just test results
+        igc.show_segmentation()
+        
+        self.assertTrue(True)
+
+
+        i#logger.debug(igc.segmentation.shape)
+
+
+
 
 # --------------------------main------------------------------
 if __name__ == "__main__":
