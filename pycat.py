@@ -99,6 +99,7 @@ class ImageGraphCut:
         self.modelparams = modelparams
 
         self.img_input_resize()
+        self.seeds = np.zeros(self.img.shape, dtype=np.int8)
 
     def img_input_resize(self):
         self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
