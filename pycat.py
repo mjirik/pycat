@@ -107,6 +107,9 @@ class ImageGraphCut:
         self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
 
     def interactivity(self):
+        """
+        Interactive seed setting with 3d seed editor
+        """
 
         pyed = py3DSeedEditor.py3DSeedEditor(self.img)
         pyed.show()
@@ -117,6 +120,14 @@ class ImageGraphCut:
         self.voxels1 = pyed.get_seed_val(0)
         self.voxels2 = pyed.get_seed_val(1)
         self.seeds = pyed.seeds
+
+    def noninteractivity(self, seeds):
+        """
+        Function for noninteractive seed setting
+        """
+        self.seeds = seeds
+        self.voxels1 = self.img[seeds==1]
+        self.voxels2 = self.img[seeds==2]
 
     def make_gc(self):
         #pdb.set_trace();
@@ -155,9 +166,17 @@ class ImageGraphCut:
         #pdb.set_trace();
         #tdata = {}
 # as we convert to int, we need to multipy to get sensible values
-        tdata1 = (mdl.likelihood(data, 1)+10) * 10
-        tdata2 = (mdl.likelihood(data, 2)+10) * 10
 
+# There is a need to have small vaues for good fit
+# R(obj) = -ln( Pr (Ip | O) )
+# R(bck) = -ln( Pr (Ip | B) )
+# Boykov2001a 
+# ln is computed in likelihood 
+# TODO Dořešit prohození
+        tdata1 = (-(mdl.likelihood(data, 1))) * 10
+        tdata2 = (-(mdl.likelihood(data, 2))) * 10
+
+        #pdb.set_trace();
         if hard_constraints: 
             #pdb.set_trace();
             if (type(seeds)=='bool'):
@@ -301,18 +320,23 @@ class Tests(unittest.TestCase):
         igc = ImageGraphCut(data)
         #igc.interactivity()
 # instead of interacitivity just set seeeds
-        igc.seeds = seeds
-        igc.voxels1 = data[seeds==1]
-        igc.voxels2 = data[seeds==2]
-# TODO 
+        igc.noninteractivity(seeds)
+        #igc.seeds = seeds
+        #igc.voxels1 = data[seeds==1]
+        #igc.voxels2 = data[seeds==2]
         igc.make_gc()
 # instead of showing just test results
-        igc.show_segmentation()
-        
-        self.assertTrue(True)
+        #igc.show_segmentation()
+        segmentation = igc.segmentation
+        # Testin some pixels for result
+        self.assertTrue(segmentation[0, 0, -1] == 0)
+        self.assertTrue(segmentation[7, 9, 3] == 1)
+        self.assertTrue(np.sum(segmentation) > 10)
+        #pdb.set_trace()
+        #self.assertTrue(True)
 
 
-        i#logger.debug(igc.segmentation.shape)
+        #logger.debug(igc.segmentation.shape)
 
 
 
