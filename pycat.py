@@ -105,6 +105,7 @@ class ImageGraphCut:
         self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
 
     def img_output_resize(self):
+        self.working_segmentation = self.segmentation
         self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
 
     def interactivity(self):
@@ -141,7 +142,7 @@ class ImageGraphCut:
 
     def show_segmentation(self):
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.segmentation)
+        pyed = py3DSeedEditor.py3DSeedEditor(self.working_segmentation)
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
