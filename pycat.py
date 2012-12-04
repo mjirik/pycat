@@ -102,6 +102,8 @@ class ImageGraphCut:
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
 
     def img_input_resize(self):
+        #pdb.set_trace();
+
         self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
 
     def img_output_resize(self):
@@ -146,10 +148,10 @@ class ImageGraphCut:
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
-        tdata1[seeds==2] = np.max(tdata1) + 1
-        tdata2[seeds==1] = np.max(tdata2) + 1
-        tdata1[seeds==1] = 0
-        tdata2[seeds==2] = 0
+        tdata1[seeds==1] = np.max(tdata1) + 1
+        tdata2[seeds==2] = np.max(tdata2) + 1
+        tdata1[seeds==2] = 0
+        tdata2[seeds==1] = 0
 
         return tdata1, tdata2
 
