@@ -138,9 +138,9 @@ class ImageGraphCut:
             self.make_gc()
 
 # new pyeditor is created, seeds must be setted
-            pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+            pyed = py3DSeedEditor.py3DSeedEditor(self.img, seeds = self.seeds, contour = self.segmentation)
 
-            pyed.seeds = self.seeds
+            #pyed.seeds = self.seeds
 
             pyed.show()
 
