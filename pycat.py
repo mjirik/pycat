@@ -121,9 +121,38 @@ class ImageGraphCut:
         #scipy.io.savemat(args.outputfile,{'data':output})
         #pyed.get_seed_val(1)
 
-        self.voxels1 = pyed.get_seed_val(0)
-        self.voxels2 = pyed.get_seed_val(1)
-        self.seeds = pyed.seeds
+
+        # control list of non zero values in seeds
+        #nzero_seeds_prev = ([],[])
+        nzero_seeds = pyed.seeds.nonzero()
+
+        pocitadlo = 0
+        opakovat = True
+
+        while opakovat:#(nzero_seeds_prev != nzero_seeds).all():
+            pocitadlo = pocitadlo + 1
+
+            self.voxels1 = pyed.get_seed_val(1)
+            self.voxels2 = pyed.get_seed_val(2)
+            self.seeds = pyed.seeds
+            self.make_gc()
+
+# new pyeditor is created, seeds must be setted
+            pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+
+            pyed.seeds = self.seeds
+
+            pyed.show()
+
+            opakovat = not np.array_equal(pyed.seeds.nonzero() , nzero_seeds)
+
+
+            #opakovat =True #not all(opakovat)
+            nzero_seeds = pyed.seeds.nonzero()
+
+
+# iterative seed selection
+        
 
     def noninteractivity(self, seeds):
         """
@@ -132,6 +161,8 @@ class ImageGraphCut:
         self.seeds = seeds
         self.voxels1 = self.img[seeds==1]
         self.voxels2 = self.img[seeds==2]
+        self.make_gc()
+        self.img_output_resize()
 
     def make_gc(self):
         #pdb.set_trace();
@@ -140,18 +171,17 @@ class ImageGraphCut:
         res_segm = self.set_data(self.img, self.voxels1, self.voxels2, seeds = self.seeds)
 
         self.segmentation = res_segm
-        self.img_output_resize()
 
     def show_segmentation(self):
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.working_segmentation)
+        pyed = py3DSeedEditor.py3DSeedEditor(self.segmentation)
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
-        tdata1[seeds==1] = np.max(tdata1) + 1
-        tdata2[seeds==2] = np.max(tdata2) + 1
-        tdata1[seeds==2] = 0
-        tdata2[seeds==1] = 0
+        tdata1[seeds==2] = np.max(tdata1) + 1
+        tdata2[seeds==1] = np.max(tdata2) + 1
+        tdata1[seeds==1] = 0
+        tdata2[seeds==2] = 0
 
         return tdata1, tdata2
 
@@ -325,10 +355,7 @@ class Tests(unittest.TestCase):
         #igc.interactivity()
 # instead of interacitivity just set seeeds
         igc.noninteractivity(seeds)
-        #igc.seeds = seeds
-        #igc.voxels1 = data[seeds==1]
-        #igc.voxels2 = data[seeds==2]
-        igc.make_gc()
+
 # instead of showing just test results
         #igc.show_segmentation()
         segmentation = igc.segmentation
