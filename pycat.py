@@ -115,7 +115,7 @@ class ImageGraphCut:
         Interactive seed setting with 3d seed editor
         """
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+        pyed = py3DSeedEditor.py3DSeedEditor(self.img, mouse_button_map = {1:2,2:3, 3:1} )
         pyed.show()
 
         #scipy.io.savemat(args.outputfile,{'data':output})
@@ -210,14 +210,17 @@ class ImageGraphCut:
         tdata1 = (-(mdl.likelihood(data, 1))) * 10
         tdata2 = (-(mdl.likelihood(data, 2))) * 10
 
+        #pyed = py3DSeedEditor.py3DSeedEditor(tdata1)
+        #pyed = py3DSeedEditor.py3DSeedEditor(seeds)
+        #pyed.show()
         #pdb.set_trace();
+
         if hard_constraints: 
             #pdb.set_trace();
             if (type(seeds)=='bool'):
                 raise Excaption ('Seeds variable  not set','There is need set seed if you want use hard constraints')
             tdata1, tdata2 = self.set_hard_hard_constraints(tdata1, tdata2, seeds)
             
-
 
 
         unariesalt = (1 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
