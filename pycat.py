@@ -100,6 +100,7 @@ class ImageGraphCut:
 
         self.img_input_resize()
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
+        self.editor_mouse_button_map = {1:2,2:3, 3:1}
 
     def img_input_resize(self):
         #pdb.set_trace();
@@ -115,7 +116,8 @@ class ImageGraphCut:
         Interactive seed setting with 3d seed editor
         """
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.img, mouse_button_map = {1:2,2:3, 3:1} )
+        pyed = py3DSeedEditor.py3DSeedEditor(self.img, 
+                mouse_button_map = self.editor_mouse_button_map )
         pyed.show()
 
         #scipy.io.savemat(args.outputfile,{'data':output})
@@ -138,7 +140,10 @@ class ImageGraphCut:
             self.make_gc()
 
 # new pyeditor is created, seeds must be setted
-            pyed = py3DSeedEditor.py3DSeedEditor(self.img, seeds = self.seeds, contour = self.segmentation)
+            pyed = py3DSeedEditor.py3DSeedEditor(self.img, seeds = self.seeds, 
+                    contour = self.segmentation,
+                    mouse_button_map = self.editor_mouse_button_map 
+                    )
 
             #pyed.seeds = self.seeds
 
@@ -206,7 +211,6 @@ class ImageGraphCut:
 # R(bck) = -ln( Pr (Ip | B) )
 # Boykov2001a 
 # ln is computed in likelihood 
-# TODO Dořešit prohození
         tdata1 = (-(mdl.likelihood(data, 1))) * 10
         tdata2 = (-(mdl.likelihood(data, 2))) * 10
 
@@ -449,8 +453,8 @@ if __name__ == "__main__":
 
     igc = ImageGraphCut(data)
     igc.interactivity()
-    igc.make_gc()
-    igc.show_segmentation()
+    #igc.make_gc()
+    #igc.show_segmentation()
     logger.debug(igc.segmentation.shape)
 
    # pyed = py3DSeedEditor.py3DSeedEditor(data)
