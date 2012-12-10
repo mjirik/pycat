@@ -90,13 +90,14 @@ class ImageGraphCut:
     igc.show_segmentation()
     logger.debug(igc.segmentation.shape)
     """
-    def __init__(self, img, zoom = 1, modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}):
+    def __init__(self, img, zoom = 1, modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}, gcparams = {'pairwiseAlpha':10}):
         self.img = img
         self.tdata = {}
         self.segmentation = []
         self.imgshape = img.shape
         self.zoom = zoom
         self.modelparams = modelparams
+        self.gcparams = gcparams
 
         self.img_input_resize()
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
@@ -162,6 +163,7 @@ class ImageGraphCut:
         """
         Setting of data.
         You need set seeds if you want use hard_constraints.
+        
         """
         mdl = Model ( modelparams = self.modelparams )
         mdl.train(voxels1, 1)
@@ -192,7 +194,8 @@ class ImageGraphCut:
         unariesalt = (1 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
 
 # create potts pairwise
-        pairwise = -10 * np.eye(2, dtype=np.int32)
+        #pairwiseAlpha = -10
+        pairwise = -self.gcparams['pairwiseAlpha'] * np.eye(2, dtype=np.int32)
 # use the gerneral graph algorithm
 # first, we construct the grid graph
         inds = np.arange(data.size).reshape(data.shape)
@@ -200,6 +203,8 @@ class ImageGraphCut:
         edgy = np.c_[inds[:, :-1, :].ravel(), inds[:, 1:, :].ravel()]
         edgz = np.c_[inds[:-1, :, :].ravel(), inds[1:, :, :].ravel()]
         edges = np.vstack([edgx, edgy, edgz]).astype(np.int32)
+
+# edges - seznam indexu hran, kteres spolu sousedi
 
 # we flatten the unaries
         #result_graph = cut_from_graph(edges, unaries.reshape(-1, 2), pairwise)
