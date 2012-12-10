@@ -16,6 +16,12 @@ Install
 
 git clone --recursive git@github.com:mjirik/pycat.git
 
+or
+
+git clone git@github.com:mjirik/pycat.git
+
+git submodule update --init --recursive
+
 gco_python install notes
 ------------------------
 

@@ -101,6 +101,7 @@ class ImageGraphCut:
 
         self.img_input_resize()
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
+        self.editor_mouse_button_map = {1:2,2:3, 3:1}
 
     def img_input_resize(self):
         #pdb.set_trace();
@@ -108,6 +109,7 @@ class ImageGraphCut:
         self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
 
     def img_output_resize(self):
+        self.working_segmentation = self.segmentation
         self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
 
     def interactivity(self):
@@ -115,15 +117,48 @@ class ImageGraphCut:
         Interactive seed setting with 3d seed editor
         """
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+        pyed = py3DSeedEditor.py3DSeedEditor(self.img, 
+                mouse_button_map = self.editor_mouse_button_map )
         pyed.show()
 
         #scipy.io.savemat(args.outputfile,{'data':output})
         #pyed.get_seed_val(1)
 
-        self.voxels1 = pyed.get_seed_val(0)
-        self.voxels2 = pyed.get_seed_val(1)
-        self.seeds = pyed.seeds
+
+        # control list of non zero values in seeds
+        #nzero_seeds_prev = ([],[])
+        nzero_seeds = pyed.seeds.nonzero()
+
+        pocitadlo = 0
+        opakovat = True
+
+        while opakovat:#(nzero_seeds_prev != nzero_seeds).all():
+            pocitadlo = pocitadlo + 1
+
+            self.voxels1 = pyed.get_seed_val(1)
+            self.voxels2 = pyed.get_seed_val(2)
+            self.seeds = pyed.seeds
+            self.make_gc()
+
+# new pyeditor is created, seeds must be setted
+            pyed = py3DSeedEditor.py3DSeedEditor(self.img, seeds = self.seeds, 
+                    contour = self.segmentation,
+                    mouse_button_map = self.editor_mouse_button_map 
+                    )
+
+            #pyed.seeds = self.seeds
+
+            pyed.show()
+
+            opakovat = not np.array_equal(pyed.seeds.nonzero() , nzero_seeds)
+
+
+            #opakovat =True #not all(opakovat)
+            nzero_seeds = pyed.seeds.nonzero()
+
+
+# iterative seed selection
+        
 
     def noninteractivity(self, seeds):
         """
@@ -132,6 +167,8 @@ class ImageGraphCut:
         self.seeds = seeds
         self.voxels1 = self.img[seeds==1]
         self.voxels2 = self.img[seeds==2]
+        self.make_gc()
+        self.img_output_resize()
 
     def make_gc(self):
         #pdb.set_trace();
@@ -140,7 +177,6 @@ class ImageGraphCut:
         res_segm = self.set_data(self.img, self.voxels1, self.voxels2, seeds = self.seeds)
 
         self.segmentation = res_segm
-        self.img_output_resize()
 
     def show_segmentation(self):
 
@@ -148,10 +184,10 @@ class ImageGraphCut:
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
-        tdata1[seeds==1] = np.max(tdata1) + 1
-        tdata2[seeds==2] = np.max(tdata2) + 1
-        tdata1[seeds==2] = 0
-        tdata2[seeds==1] = 0
+        tdata1[seeds==2] = np.max(tdata1) + 1
+        tdata2[seeds==1] = np.max(tdata2) + 1
+        tdata1[seeds==1] = 0
+        tdata2[seeds==2] = 0
 
         return tdata1, tdata2
 
@@ -177,18 +213,20 @@ class ImageGraphCut:
 # R(bck) = -ln( Pr (Ip | B) )
 # Boykov2001a 
 # ln is computed in likelihood 
-# TODO Dořešit prohození
         tdata1 = (-(mdl.likelihood(data, 1))) * 10
         tdata2 = (-(mdl.likelihood(data, 2))) * 10
 
+        #pyed = py3DSeedEditor.py3DSeedEditor(tdata1)
+        #pyed = py3DSeedEditor.py3DSeedEditor(seeds)
+        #pyed.show()
         #pdb.set_trace();
+
         if hard_constraints: 
             #pdb.set_trace();
             if (type(seeds)=='bool'):
                 raise Excaption ('Seeds variable  not set','There is need set seed if you want use hard constraints')
             tdata1, tdata2 = self.set_hard_hard_constraints(tdata1, tdata2, seeds)
             
-
 
 
         unariesalt = (1 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
@@ -329,10 +367,7 @@ class Tests(unittest.TestCase):
         #igc.interactivity()
 # instead of interacitivity just set seeeds
         igc.noninteractivity(seeds)
-        #igc.seeds = seeds
-        #igc.voxels1 = data[seeds==1]
-        #igc.voxels2 = data[seeds==2]
-        igc.make_gc()
+
 # instead of showing just test results
         #igc.show_segmentation()
         segmentation = igc.segmentation
@@ -423,8 +458,8 @@ if __name__ == "__main__":
 
     igc = ImageGraphCut(data)
     igc.interactivity()
-    igc.make_gc()
-    igc.show_segmentation()
+    #igc.make_gc()
+    #igc.show_segmentation()
     logger.debug(igc.segmentation.shape)
 
    # pyed = py3DSeedEditor.py3DSeedEditor(data)
