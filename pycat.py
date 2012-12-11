@@ -107,10 +107,13 @@ class ImageGraphCut:
         #pdb.set_trace();
 
         self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
+        self.img_orig_shape = False
 
     def img_output_resize(self):
-        self.working_segmentation = self.segmentation
-        self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+        if not  self.img_orig_shape:
+            #self.working_segmentation = self.segmentation
+            self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+        self.img_orig_shape = True
 
     def interactivity(self):
         """
@@ -155,6 +158,8 @@ class ImageGraphCut:
 
             #opakovat =True #not all(opakovat)
             nzero_seeds = pyed.seeds.nonzero()
+
+        self.img_output_resize()
 
 
 # iterative seed selection
