@@ -115,6 +115,11 @@ class ImageGraphCut:
             self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
         self.img_orig_shape = True
 
+    def get_orig_shape_segmentation(self):
+        if not  self.img_orig_shape:
+            #self.working_segmentation = self.segmentation
+            return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+
     def interactivity(self):
         """
         Interactive seed setting with 3d seed editor
@@ -159,7 +164,6 @@ class ImageGraphCut:
             #opakovat =True #not all(opakovat)
             nzero_seeds = pyed.seeds.nonzero()
 
-        self.img_output_resize()
 
 
 # iterative seed selection
