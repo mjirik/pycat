@@ -25,6 +25,7 @@ git submodule update --init --recursive
 gco_python install notes
 ------------------------
 
+see  http://peekaboo-vision.blogspot.cz/2012/05/graphcuts-for-python-pygco.html
 
 sudo apt-get install cython
 
