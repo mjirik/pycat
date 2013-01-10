@@ -16,13 +16,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pygco import cut_simple, cut_from_graph
 import sklearn
-from sklearn import mixture
+import sklearn.mixture
 
 import scipy.ndimage
 
 sys.path.append("./extern/py3DSeedEditor/")
 import py3DSeedEditor
+# version comparison
+#from pkg_resources import parse_version
+#
+#if parse_version(sklearn.__version__) > parse_version('0.10'):
+#    #new versions
+#    defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
+#else:
+#    defaultmodelparams =  {'type':'gmmsame','params':{'cvtype':'full'}}
 
+defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
 
 class Model:
     """ Model for image intensity. Last dimension represent feature vector. 
@@ -32,7 +41,8 @@ class Model:
     # we have data 2x3 with fature vector with 4 fatures
     m.likelihood(X,0)
     """
-    def __init__ (self, nObjects=2,  modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}):
+    def __init__ (self, nObjects=2,  modelparams = defaultmodelparams):
+
         self.mdl =  {}
         self.modelparams = modelparams
         pass
@@ -90,7 +100,7 @@ class ImageGraphCut:
     igc.show_segmentation()
     logger.debug(igc.segmentation.shape)
     """
-    def __init__(self, img, zoom = 1, modelparams = {'type':'gmmsame','params':{'cvtype':'full'}}, gcparams = {'pairwiseAlpha':10}):
+    def __init__(self, img, zoom = 1, modelparams = defaultmodelparams, gcparams = {'pairwiseAlpha':10}):
         self.img = img
         self.tdata = {}
         self.segmentation = []
@@ -233,7 +243,7 @@ class ImageGraphCut:
         if hard_constraints: 
             #pdb.set_trace();
             if (type(seeds)=='bool'):
-                raise Excaption ('Seeds variable  not set','There is need set seed if you want use hard constraints')
+                raise Exception ('Seeds variable  not set','There is need set seed if you want use hard constraints')
             tdata1, tdata2 = self.set_hard_hard_constraints(tdata1, tdata2, seeds)
             
 
@@ -443,7 +453,6 @@ if __name__ == "__main__":
         from scipy import misc
         data = misc.lena()
     elif args.filename == '3d':
-        from scipy import misc
         data = generate_data()
     else:
     #   load all 
