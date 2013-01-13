@@ -23,15 +23,15 @@ import scipy.ndimage
 sys.path.append("./extern/py3DSeedEditor/")
 import py3DSeedEditor
 # version comparison
-#from pkg_resources import parse_version
-#
-#if parse_version(sklearn.__version__) > parse_version('0.10'):
-#    #new versions
-#    defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
-#else:
-#    defaultmodelparams =  {'type':'gmmsame','params':{'cvtype':'full'}}
+from pkg_resources import parse_version
 
-defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
+if parse_version(sklearn.__version__) > parse_version('0.10'):
+    #new versions
+    defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
+else:
+    defaultmodelparams =  {'type':'gmmsame','params':{'cvtype':'full'}}
+
+#defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
 
 class Model:
     """ Model for image intensity. Last dimension represent feature vector. 
@@ -105,7 +105,9 @@ class ImageGraphCut:
         self.tdata = {}
         self.segmentation = []
         self.imgshape = img.shape
-        self.zoom = zoom
+        if np.isscalar(zoom):
+            zoom = [zoom]*3
+        self.zoom = np.array(zoom)
         self.modelparams = modelparams
         self.gcparams = gcparams
 
@@ -129,6 +131,65 @@ class ImageGraphCut:
         if not  self.img_orig_shape:
             #self.working_segmentation = self.segmentation
             return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+
+    def get_orig_shape_cropped_segmentation(self, margin=[1,1,1]):
+        """
+        Make automatic segmentation nonzero crop. Margin adds some space 
+        around nonzero values
+        """
+        if not  self.img_orig_shape:
+
+            crdata, crinfo = self.autocrop_specific_data(self.segmentation, margin)
+            #self.working_segmentation = self.segmentation
+            orig_scale_data = scipy.ndimage.zoom(crdata, 1/self.zoom)
+            
+            #import pdb; pdb.set_trace()
+            orig_scale_crinfo = [
+                    [int(round(crinfo[0][0]*self.zoom[0])),
+                     int(round(crinfo[0][0]*self.zoom[0]))+orig_scale_data.shape[0]],
+                    [int(round(crinfo[1][0]*self.zoom[1])),
+                     int(round(crinfo[1][0]*self.zoom[1]))+orig_scale_data.shape[1]],
+                    [int(round(crinfo[2][0]*self.zoom[2])),
+                     int(round(crinfo[2][0]*self.zoom[2]))+orig_scale_data.shape[2]],
+                    ]
+            #print crinfo
+            #print orig_scale_crinfo
+            return orig_scale_data, orig_scale_crinfo
+        else:
+            Exception("Image was not resized")
+
+
+
+    def autocrop_specific_data (self, data, margin):
+# hledáme automatický ořez, nonzero dá indexy
+        nzi = np.nonzero(data)
+
+        x1 = np.min(nzi[0]) - margin[0]
+        x2 = np.max(nzi[0]) + margin[0] + 1
+        y1 = np.min(nzi[1]) - margin[0]
+        y2 = np.max(nzi[1]) + margin[0] + 1
+        z1 = np.min(nzi[2]) - margin[0]
+        z2 = np.max(nzi[2]) + margin[0] + 1 
+
+# ošetření mezí polí
+        if x1 < 0:
+            x1 = 0
+        if y1 < 0:
+            y1 = 0
+        if z1 < 0:
+            z1 = 0
+
+        if x2 > data.shape[0]:
+            x2 = data.shape[0]-1
+        if y2 > data.shape[1]:
+            y2 = data.shape[1]-1
+        if z2 > data.shape[2]:
+            z2 = data.shape[2]-1
+
+# ořez
+        dataout = data[x1:x2, y1:y2, z1:z2]
+        return dataout, [[x1, x2],[y1,y2],[z1,z2]]
+
 
     def interactivity(self):
         """
@@ -197,9 +258,12 @@ class ImageGraphCut:
 
         self.segmentation = res_segm
 
-    def show_segmentation(self):
+    def show_segmentation(self, img = None):
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.segmentation)
+        if img == None:
+            img = self.segmentation
+
+        pyed = py3DSeedEditor.py3DSeedEditor(img)
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
@@ -474,10 +538,10 @@ if __name__ == "__main__":
         # zde by byl prostor pro ruční (interaktivní) zvolení prahu z klávesnice 
         #tě ebo jinak
 
-    igc = ImageGraphCut(data)
+    igc = ImageGraphCut(data)#, zoom=0.8)
     igc.interactivity()
-    #igc.make_gc()
-    #igc.show_segmentation()
+    #data, crinfo = igc.get_orig_shape_cropped_segmentation()
+    #igc.show_segmentation(data)
     logger.debug(igc.segmentation.shape)
 
    # pyed = py3DSeedEditor.py3DSeedEditor(data)
