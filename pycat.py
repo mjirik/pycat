@@ -145,12 +145,12 @@ class ImageGraphCut:
             
             #import pdb; pdb.set_trace()
             orig_scale_crinfo = [
-                    [int(round(crinfo[0][0]*self.zoom[0])),
-                     int(round(crinfo[0][0]*self.zoom[0]))+orig_scale_data.shape[0]],
-                    [int(round(crinfo[1][0]*self.zoom[1])),
-                     int(round(crinfo[1][0]*self.zoom[1]))+orig_scale_data.shape[1]],
-                    [int(round(crinfo[2][0]*self.zoom[2])),
-                     int(round(crinfo[2][0]*self.zoom[2]))+orig_scale_data.shape[2]],
+                    [int(round(crinfo[0][0]/self.zoom[0])),
+                     int(round(crinfo[0][0]/self.zoom[0]))+orig_scale_data.shape[0]],
+                    [int(round(crinfo[1][0]/self.zoom[1])),
+                     int(round(crinfo[1][0]/self.zoom[1]))+orig_scale_data.shape[1]],
+                    [int(round(crinfo[2][0]/self.zoom[2])),
+                     int(round(crinfo[2][0]/self.zoom[2]))+orig_scale_data.shape[2]],
                     ]
             #print crinfo
             #print orig_scale_crinfo
