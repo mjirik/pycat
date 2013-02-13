@@ -118,19 +118,19 @@ class ImageGraphCut:
     def img_input_resize(self):
         #pdb.set_trace();
 
-        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest')
+        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest', order = 1)
         self.img_orig_shape = False
 
     def img_output_resize(self):
         if not  self.img_orig_shape:
             #self.working_segmentation = self.segmentation
-            self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+            self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
         self.img_orig_shape = True
 
     def get_orig_shape_segmentation(self):
         if not  self.img_orig_shape:
             #self.working_segmentation = self.segmentation
-            return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+            return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
 
     def get_orig_shape_cropped_segmentation(self, margin=[1,1,1]):
         """
@@ -141,7 +141,7 @@ class ImageGraphCut:
 
             crdata, crinfo = self.autocrop_specific_data(self.segmentation, margin)
             #self.working_segmentation = self.segmentation
-            orig_scale_data = scipy.ndimage.zoom(crdata, 1/self.zoom)
+            orig_scale_data = scipy.ndimage.zoom(crdata, 1/self.zoom, order = 1)
             
             #import pdb; pdb.set_trace()
             orig_scale_crinfo = [
