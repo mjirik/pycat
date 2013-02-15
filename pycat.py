@@ -115,6 +115,7 @@ class ImageGraphCut:
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
         self.editor_mouse_button_map = {1:2,2:3, 3:1}
         self.crinfo = None
+        self.crinfo_resized = None
 
 
     def _seed_input_resize(self, seeds_orig_shape):
@@ -145,17 +146,20 @@ class ImageGraphCut:
             #self.working_segmentation = self.segmentation
             return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
 
-    def get_orig_shape_cropped_seeds(self, margin = [1,1,1]):
+    def get_orig_scale_cropped_seeds(self, margin = [1,1,1]):
         """
         Function return seeds in original scale. Image is cropped with 
         respect of segmentation.
         """
         if not  self.img_orig_shape:
+            if self.crinfo_resized == None:
+                Exception("get_orig_scale_cropped_segmentation() must be called before")
+            else:
 
-            crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
-            crseeds = self._crop(self.segmentation, crinfo)
-            orig_scale_seeds = scipy.ndimage.zoom(crseeds, 1/self.zoom, order = 1)
-            return orig_scale_seeds
+                #crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
+                crseeds = self._crop(self.segmentation, self.crinfo_resized)
+                orig_scale_seeds = scipy.ndimage.zoom(crseeds, 1/self.zoom, order = 1)
+                return orig_scale_seeds
 
         else:
             Exception("Image was not resized")
@@ -185,6 +189,7 @@ class ImageGraphCut:
                     [int(round(crinfo[2][0]/self.zoom[2])),
                      int(round(crinfo[2][0]/self.zoom[2]))+orig_scale_data.shape[2]],
                     ]
+            self.crinfo_resized = crinfo
             #print crinfo
             #print orig_scale_crinfo
             return orig_scale_data, orig_scale_crinfo
