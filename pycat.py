@@ -114,7 +114,20 @@ class ImageGraphCut:
         self.img_input_resize()
         self.seeds = np.zeros(self.img.shape, dtype=np.int8)
         self.editor_mouse_button_map = {1:2,2:3, 3:1}
+        self.crinfo = None
 
+
+    def _seed_input_resize(self, seeds_orig_shape):
+        """
+        function sets seeds. They are resized to proper shape
+        """
+        #self.seeds  = scipy.ndimage.zoom(seeds_orig_shape.astype(np.float16) , self.zoom, prefilter=False, mode= 'nearest', order = 1)
+        self.seeeds = scipy.ndimage.zoom(seeds_orig_shape , self.zoom, prefilter=False, mode= 'nearest', order = 1)
+        self.seeds = self.seeds.astype(np.int8)
+
+
+
+        
     def img_input_resize(self):
         #pdb.set_trace();
 
@@ -132,14 +145,34 @@ class ImageGraphCut:
             #self.working_segmentation = self.segmentation
             return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
 
-    def get_orig_shape_cropped_segmentation(self, margin=[1,1,1]):
+    def get_orig_shape_cropped_seeds(self, margin = [1,1,1]):
+        """
+        Function return seeds in original scale. Image is cropped with 
+        respect of segmentation.
+        """
+        if not  self.img_orig_shape:
+
+            crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
+            crseeds = self._crop(self.segmentation, crinfo)
+            orig_scale_seeds = scipy.ndimage.zoom(crseeds, 1/self.zoom, order = 1)
+            return orig_scale_seeds
+
+        else:
+            Exception("Image was not resized")
+
+        
+    def get_orig_scale_cropped_segmentation(self, margin=[1,1,1]):
         """
         Make automatic segmentation nonzero crop. Margin adds some space 
         around nonzero values
         """
+        # TODO crinfo má původ velikosti a je jen přenásobeno. Patrně tam 
+        # budou necelá čísla a nebude to úplně sedět. Asi by bylo lepší to 
+        # nejprve přezvětšit a pak až oříznout
         if not  self.img_orig_shape:
 
-            crdata, crinfo = self.autocrop_specific_data(self.segmentation, margin)
+            crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
+            crdata = self._crop(self.segmentation, crinfo)
             #self.working_segmentation = self.segmentation
             orig_scale_data = scipy.ndimage.zoom(crdata, 1/self.zoom, order = 1)
             
@@ -158,9 +191,15 @@ class ImageGraphCut:
         else:
             Exception("Image was not resized")
 
+    def _crop(self, data, crinfo):
+        """
+        Crop data with crinfo
+        """
+        data = data[crinfo[0][0]:crinfo[0][1], crinfo[1][0]:crinfo[1][1], crinfo[2][0]:crinfo[2][1]]
+        return data
 
 
-    def autocrop_specific_data (self, data, margin):
+    def _crinfo_from_specific_data (self, data, margin):
 # hledáme automatický ořez, nonzero dá indexy
         nzi = np.nonzero(data)
 
@@ -187,8 +226,10 @@ class ImageGraphCut:
             z2 = data.shape[2]-1
 
 # ořez
-        dataout = data[x1:x2, y1:y2, z1:z2]
-        return dataout, [[x1, x2],[y1,y2],[z1,z2]]
+        crinfo = [[x1, x2],[y1,y2],[z1,z2]]
+        #dataout = self._crop(data,crinfo)
+        #dataout = data[x1:x2, y1:y2, z1:z2]
+        return crinfo
 
 
     def interactivity(self):
