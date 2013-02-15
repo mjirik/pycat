@@ -290,7 +290,8 @@ class ImageGraphCut:
         """
         Function for noninteractive seed setting
         """
-        self.seeds = seeds
+        # self.seeds = seeds
+        self._seed_input_resize(seeds)
         self.voxels1 = self.img[seeds==1]
         self.voxels2 = self.img[seeds==2]
         self.make_gc()
