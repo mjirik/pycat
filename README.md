@@ -16,9 +16,16 @@ Install
 
 git clone --recursive git@github.com:mjirik/pycat.git
 
+or
+
+git clone git@github.com:mjirik/pycat.git
+
+git submodule update --init --recursive
+
 gco_python install notes
 ------------------------
 
+see  http://peekaboo-vision.blogspot.cz/2012/05/graphcuts-for-python-pygco.html
 
 sudo apt-get install cython
 

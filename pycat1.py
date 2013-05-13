@@ -16,13 +16,22 @@ import matplotlib.pyplot as plt
 import numpy as np
 from pygco import cut_simple, cut_from_graph
 import sklearn
-from sklearn import mixture
+import sklearn.mixture
 
 import scipy.ndimage
 
 sys.path.append("./extern/py3DSeedEditor/")
 import py3DSeedEditor
+# version comparison
+from pkg_resources import parse_version
 
+if parse_version(sklearn.__version__) > parse_version('0.10'):
+    #new versions
+    defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
+else:
+    defaultmodelparams =  {'type':'gmmsame','params':{'cvtype':'full'}}
+
+#defaultmodelparams =  {'type':'gmmsame','params':{'covariance_type':'full'}}
 
 class Model:
     """ Model for image intensity. Last dimension represent feature vector. 
@@ -32,18 +41,26 @@ class Model:
     # we have data 2x3 with fature vector with 4 fatures
     m.likelihood(X,0)
     """
-    def __init__ (self, nObjects=2):
+    def __init__ (self, nObjects=2,  modelparams = defaultmodelparams):
+
         self.mdl =  {}
+        self.modelparams = modelparams
         pass
 
-    def train(self, clx, cl):
+    def train(self, clx, cl ):
         """ Train clas number cl with data clx """
-        #mdl1 = sklearn.mixture.GMM(covariance_type='full')
-        self.mdl[cl] = sklearn.mixture.GMM(cvtype='full')
-	if len(clx.shape) == 1:
-            # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
-            clx = clx.reshape(-1,1)
-        self.mdl[cl].fit(clx)
+
+        if self.modelparams['type'] == 'gmmsame':
+            gmmparams = self.modelparams['params']
+            #mdl1 = sklearn.mixture.GMM(covariance_type='full')
+            self.mdl[cl] = sklearn.mixture.GMM(**gmmparams)
+            if len(clx.shape) == 1:
+                # je to jen jednorozměrný vektor, tak je potřeba to převést na 2d matici
+                clx = clx.reshape(-1,1)
+            self.mdl[cl].fit(clx)
+        else:
+            raise NameError("Unknown model type")
+
         #pdb.set_trace();
 
     def likelihood(self, x, cl, onedimfv = True):
@@ -69,32 +86,216 @@ class Model:
 
 
 class ImageGraphCut:
-    def __init__(self, img, zoom = 1):
+    """
+    Interactive Graph Cut
+
+    ImageGraphCut(data, zoom, modelparams)
+    scale
+
+    Example:
+
+    igc = ImageGraphCut(data)
+    igc.interactivity()
+    igc.make_gc()
+    igc.show_segmentation()
+    logger.debug(igc.segmentation.shape)
+    """
+    def __init__(self, img, zoom = 1, modelparams = defaultmodelparams, gcparams = {'pairwiseAlpha':10}):
         self.img = img
         self.tdata = {}
         self.segmentation = []
         self.imgshape = img.shape
-        self.zoom = zoom
+        if np.isscalar(zoom):
+            zoom = [zoom]*3
+        self.zoom = np.array(zoom)
+        self.modelparams = modelparams
+        self.gcparams = gcparams
 
         self.img_input_resize()
+        self.seeds = np.zeros(self.img.shape, dtype=np.int8)
+        self.editor_mouse_button_map = {1:2,2:3, 3:1}
+        self.crinfo = None
+        self.crinfo_resized = None
 
+
+    def _seed_input_resize(self, seeds_orig_shape):
+        """
+        function sets seeds. They are resized to proper shape
+        """
+        #self.seeds  = scipy.ndimage.zoom(seeds_orig_shape.astype(np.float16) , self.zoom, prefilter=False, mode= 'nearest', order = 1)
+        self.seeeds = scipy.ndimage.zoom(seeds_orig_shape , self.zoom, prefilter=False, mode= 'nearest', order = 1)
+        self.seeds = self.seeds.astype(np.int8)
+
+
+
+        
     def img_input_resize(self):
-        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, method = 'nearest')
+        #pdb.set_trace();
+
+        self.img = scipy.ndimage.zoom(self.img, self.zoom, prefilter=False, mode= 'nearest', order = 1)
+        self.img_orig_shape = False
 
     def img_output_resize(self):
-        self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom)
+        if not  self.img_orig_shape:
+            #self.working_segmentation = self.segmentation
+            self.segmentation = scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
+        self.img_orig_shape = True
+
+    def get_orig_shape_segmentation(self):
+        if not  self.img_orig_shape:
+            #self.working_segmentation = self.segmentation
+            return  scipy.ndimage.zoom(self.segmentation, 1/self.zoom, order = 1)
+
+    def get_orig_scale_cropped_seeds(self, margin = [1,1,1]):
+        """
+        Function return seeds in original scale. Image is cropped with 
+        respect of segmentation.
+        """
+        if not  self.img_orig_shape:
+            if self.crinfo_resized == None:
+                Exception("get_orig_scale_cropped_segmentation() must be called before")
+            else:
+
+                #crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
+                crseeds = self._crop(self.segmentation, self.crinfo_resized)
+                orig_scale_seeds = scipy.ndimage.zoom(crseeds, 1/self.zoom, order = 1)
+                return orig_scale_seeds
+
+        else:
+            Exception("Image was not resized")
+
+        
+    def get_orig_scale_cropped_segmentation(self, margin=[1,1,1]):
+        """
+        Make automatic segmentation nonzero crop. Margin adds some space 
+        around nonzero values
+        """
+        # TODO crinfo má původ velikosti a je jen přenásobeno. Patrně tam 
+        # budou necelá čísla a nebude to úplně sedět. Asi by bylo lepší to 
+        # nejprve přezvětšit a pak až oříznout
+        if not  self.img_orig_shape:
+
+            crinfo = self._crinfo_from_specific_data(self.segmentation, margin)
+            crdata = self._crop(self.segmentation, crinfo)
+            #self.working_segmentation = self.segmentation
+            orig_scale_data = scipy.ndimage.zoom(crdata, 1/self.zoom, order = 1)
+            
+            #import pdb; pdb.set_trace()
+            orig_scale_crinfo = [
+                    [int(round(crinfo[0][0]/self.zoom[0])),
+                     int(round(crinfo[0][0]/self.zoom[0]))+orig_scale_data.shape[0]],
+                    [int(round(crinfo[1][0]/self.zoom[1])),
+                     int(round(crinfo[1][0]/self.zoom[1]))+orig_scale_data.shape[1]],
+                    [int(round(crinfo[2][0]/self.zoom[2])),
+                     int(round(crinfo[2][0]/self.zoom[2]))+orig_scale_data.shape[2]],
+                    ]
+            self.crinfo_resized = crinfo
+            #print crinfo
+            #print orig_scale_crinfo
+            return orig_scale_data, orig_scale_crinfo
+        else:
+            Exception("Image was not resized")
+
+    def _crop(self, data, crinfo):
+        """
+        Crop data with crinfo
+        """
+        data = data[crinfo[0][0]:crinfo[0][1], crinfo[1][0]:crinfo[1][1], crinfo[2][0]:crinfo[2][1]]
+        return data
+
+
+    def _crinfo_from_specific_data (self, data, margin):
+# hledáme automatický ořez, nonzero dá indexy
+        nzi = np.nonzero(data)
+
+        x1 = np.min(nzi[0]) - margin[0]
+        x2 = np.max(nzi[0]) + margin[0] + 1
+        y1 = np.min(nzi[1]) - margin[0]
+        y2 = np.max(nzi[1]) + margin[0] + 1
+        z1 = np.min(nzi[2]) - margin[0]
+        z2 = np.max(nzi[2]) + margin[0] + 1 
+
+# ošetření mezí polí
+        if x1 < 0:
+            x1 = 0
+        if y1 < 0:
+            y1 = 0
+        if z1 < 0:
+            z1 = 0
+
+        if x2 > data.shape[0]:
+            x2 = data.shape[0]-1
+        if y2 > data.shape[1]:
+            y2 = data.shape[1]-1
+        if z2 > data.shape[2]:
+            z2 = data.shape[2]-1
+
+# ořez
+        crinfo = [[x1, x2],[y1,y2],[z1,z2]]
+        #dataout = self._crop(data,crinfo)
+        #dataout = data[x1:x2, y1:y2, z1:z2]
+        return crinfo
+
 
     def interactivity(self):
+        """
+        Interactive seed setting with 3d seed editor
+        """
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.img)
+        pyed = py3DSeedEditor.py3DSeedEditor(self.img, 
+                mouse_button_map = self.editor_mouse_button_map )
         pyed.show()
 
         #scipy.io.savemat(args.outputfile,{'data':output})
         #pyed.get_seed_val(1)
 
-        self.voxels1 = pyed.get_seed_val(0)
-        self.voxels2 = pyed.get_seed_val(1)
-        self.seeds = pyed.seeds
+
+        # control list of non zero values in seeds
+        #nzero_seeds_prev = ([],[])
+        nzero_seeds = pyed.seeds.nonzero()
+
+        pocitadlo = 0
+        opakovat = True
+
+        while opakovat:#(nzero_seeds_prev != nzero_seeds).all():
+            pocitadlo = pocitadlo + 1
+
+            self.voxels1 = pyed.get_seed_val(1)
+            self.voxels2 = pyed.get_seed_val(2)
+            self.seeds = pyed.seeds
+            self.make_gc()
+
+# new pyeditor is created, seeds must be setted
+            pyed = py3DSeedEditor.py3DSeedEditor(self.img, seeds = self.seeds, 
+                    contour = self.segmentation,
+                    mouse_button_map = self.editor_mouse_button_map 
+                    )
+
+            #pyed.seeds = self.seeds
+
+            pyed.show()
+
+            opakovat = not np.array_equal(pyed.seeds.nonzero() , nzero_seeds)
+
+
+            #opakovat =True #not all(opakovat)
+            nzero_seeds = pyed.seeds.nonzero()
+
+
+
+# iterative seed selection
+        
+
+    def noninteractivity(self, seeds):
+        """
+        Function for noninteractive seed setting
+        """
+        # self.seeds = seeds
+        self._seed_input_resize(seeds)
+        self.voxels1 = self.img[seeds==1]
+        self.voxels2 = self.img[seeds==2]
+        self.make_gc()
+        self.img_output_resize()
 
     def make_gc(self):
         #pdb.set_trace();
@@ -103,11 +304,13 @@ class ImageGraphCut:
         res_segm = self.set_data(self.img, self.voxels1, self.voxels2, seeds = self.seeds)
 
         self.segmentation = res_segm
-        self.img_output_resize()
 
-    def show_segmentation(self):
+    def show_segmentation(self, img = None):
 
-        pyed = py3DSeedEditor.py3DSeedEditor(self.segmentation)
+        if img == None:
+            img = self.segmentation
+
+        pyed = py3DSeedEditor.py3DSeedEditor(img)
         pyed.show()
 
     def set_hard_hard_constraints(self, tdata1, tdata2, seeds):
@@ -126,29 +329,41 @@ class ImageGraphCut:
         """
         Setting of data.
         You need set seeds if you want use hard_constraints.
+        
         """
-        mdl = Model ()
+        mdl = Model ( modelparams = self.modelparams )
         mdl.train(voxels1, 1)
         mdl.train(voxels2, 2)
         #pdb.set_trace();
         #tdata = {}
 # as we convert to int, we need to multipy to get sensible values
-        tdata1 = (mdl.likelihood(data, 1)+10) * 10
-        tdata2 = (mdl.likelihood(data, 2)+10) * 10
+
+# There is a need to have small vaues for good fit
+# R(obj) = -ln( Pr (Ip | O) )
+# R(bck) = -ln( Pr (Ip | B) )
+# Boykov2001a 
+# ln is computed in likelihood 
+        tdata1 = (-(mdl.likelihood(data, 1))) * 10
+        tdata2 = (-(mdl.likelihood(data, 2))) * 10
+
+        #pyed = py3DSeedEditor.py3DSeedEditor(tdata1)
+        #pyed = py3DSeedEditor.py3DSeedEditor(seeds)
+        #pyed.show()
+        #pdb.set_trace();
 
         if hard_constraints: 
             #pdb.set_trace();
             if (type(seeds)=='bool'):
-                raise Excaption ('Seeds variable  not set','There is need set seed if you want use hard constraints')
+                raise Exception ('Seeds variable  not set','There is need set seed if you want use hard constraints')
             tdata1, tdata2 = self.set_hard_hard_constraints(tdata1, tdata2, seeds)
             
-
 
 
         unariesalt = (1 * np.dstack([tdata1.reshape(-1,1), tdata2.reshape(-1,1)]).copy("C")).astype(np.int32)
 
 # create potts pairwise
-        pairwise = -10 * np.eye(2, dtype=np.int32)
+        #pairwiseAlpha = -10
+        pairwise = -self.gcparams['pairwiseAlpha'] * np.eye(2, dtype=np.int32)
 # use the gerneral graph algorithm
 # first, we construct the grid graph
         inds = np.arange(data.size).reshape(data.shape)
@@ -156,6 +371,8 @@ class ImageGraphCut:
         edgy = np.c_[inds[:, :-1, :].ravel(), inds[:, 1:, :].ravel()]
         edgz = np.c_[inds[:-1, :, :].ravel(), inds[1:, :, :].ravel()]
         edges = np.vstack([edgx, edgy, edgz]).astype(np.int32)
+
+# edges - seznam indexu hran, kteres spolu sousedi
 
 # we flatten the unaries
         #result_graph = cut_from_graph(edges, unaries.reshape(-1, 2), pairwise)
@@ -263,6 +480,39 @@ def example_binary():
 
     plt.show()
                                                                                                         
+class Tests(unittest.TestCase):
+    def setUp(self):
+        pass
+
+    def test_segmentation(self):
+        data_shp = [16,16,16]
+        data = generate_data(data_shp)
+        seeds = np.zeros(data_shp)
+# setting background seeds
+        seeds[:,0,0] = 1
+        seeds[6,8:-5,2] = 2
+    #x[4:-4, 6:-2, 1:-6] = -1
+
+        igc = ImageGraphCut(data)
+        #igc.interactivity()
+# instead of interacitivity just set seeeds
+        igc.noninteractivity(seeds)
+
+# instead of showing just test results
+        #igc.show_segmentation()
+        segmentation = igc.segmentation
+        # Testin some pixels for result
+        self.assertTrue(segmentation[0, 0, -1] == 0)
+        self.assertTrue(segmentation[7, 9, 3] == 1)
+        self.assertTrue(np.sum(segmentation) > 10)
+        #pdb.set_trace()
+        #self.assertTrue(True)
+
+
+        #logger.debug(igc.segmentation.shape)
+
+
+
 
 # --------------------------main------------------------------
 if __name__ == "__main__":
@@ -314,7 +564,6 @@ if __name__ == "__main__":
         from scipy import misc
         data = misc.lena()
     elif args.filename == '3d':
-        from scipy import misc
         data = generate_data()
     else:
     #   load all 
@@ -336,10 +585,10 @@ if __name__ == "__main__":
         # zde by byl prostor pro ruční (interaktivní) zvolení prahu z klávesnice 
         #tě ebo jinak
 
-    igc = ImageGraphCut(data)
+    igc = ImageGraphCut(data)#, zoom=0.8)
     igc.interactivity()
-    igc.make_gc()
-    igc.show_segmentation()
+    #data, crinfo = igc.get_orig_shape_cropped_segmentation()
+    #igc.show_segmentation(data)
     logger.debug(igc.segmentation.shape)
 
    # pyed = py3DSeedEditor.py3DSeedEditor(data)
